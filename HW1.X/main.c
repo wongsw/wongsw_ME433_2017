@@ -61,12 +61,14 @@ int main() {
     __builtin_enable_interrupts();
 
     while(1) {
-	    // use _CP0_SET_COUNT(0) and _CP0_GET_COUNT() to test the PIC timing
-        _CP0_SET_COUNT(0); //sets core timer counter to 0
-        // remember the core timer runs at half the CPU speed
-        while(_CP0_GET_COUNT() <= 12000){
-            ; //do nothing for 0.5ms
+        while(PORTBbits.RB4){
+            // use _CP0_SET_COUNT(0) and _CP0_GET_COUNT() to test the PIC timing
+            _CP0_SET_COUNT(0); //sets core timer counter to 0
+            // remember the core timer runs at half the CPU speed
+            while(_CP0_GET_COUNT() <= 12000){
+                ; //do nothing for 0.5ms
+            }
+            LATAbits.LATA4 = !LATAbits.LATA4; //Invert output of Green LED   
         }
-        LATAbits.LATA4 = !LATAbits.LATA4; //Invert output of Green LED   
     }
 }
