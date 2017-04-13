@@ -1,47 +1,67 @@
-// I2C Master utilities, 100 kHz, using polling rather than interrupts
-// The functions must be callled in the correct order as per the I2C protocol
-// Change I2C1 to the I2C channel you are using
-// I2C pins need pull-up resistors, 2k-10k
+#include<xc.h>           // processor SFR definitions
+#include<sys/attribs.h>  // __ISR macro
 
-void i2c_master_setup(void) {
-  I2C1BRG = some number for 100kHz;            // I2CBRG = [1/(2*Fsck) - PGD]*Pblck - 2 
-                                    // look up PGD for your PIC32
-  I2C1CONbits.ON = 1;               // turn on the I2C1 module
-}
+// DEVCFG0
+#pragma config DEBUG = OFF // no debugging
+#pragma config JTAGEN = OFF // no jtag
+#pragma config ICESEL = ICS_PGx1 // use PGED1 and PGEC1
+#pragma config PWP = OFF // no write protect
+#pragma config BWP = OFF // no boot write protect
+#pragma config CP = OFF // no code protect
 
-// Start a transmission on the I2C bus
-void i2c_master_start(void) {
-    I2C1CONbits.SEN = 1;            // send the start bit
-    while(I2C1CONbits.SEN) { ; }    // wait for the start bit to be sent
-}
+// DEVCFG1
+#pragma config FNOSC = PRIPLL // use primary oscillator with pll
+#pragma config FSOSCEN = OFF // turn off secondary oscillator
+#pragma config IESO = OFF // no switching clocks
+#pragma config POSCMOD = HS // high speed crystal mode
+#pragma config OSCIOFNC = OFF // free up secondary osc pins ??
+#pragma config FPBDIV = DIV_1 // divide CPU freq by 1 for peripheral bus clock
+#pragma config FCKSM = CSDCMD // do not enable clock switch
+#pragma config WDTPS = PS1048576 // slowest wdt
+#pragma config WINDIS = OFF // no wdt window
+#pragma config FWDTEN = OFF // wdt off by default
+#pragma config FWDTWINSZ = WINSZ_25 // wdt window at 25%
 
-void i2c_master_restart(void) {     
-    I2C1CONbits.RSEN = 1;           // send a restart 
-    while(I2C1CONbits.RSEN) { ; }   // wait for the restart to clear
-}
+// DEVCFG2 - get the CPU clock to 48MHz (input clock is 8MHz crystal)
+#pragma config FPLLIDIV = DIV_2 // divide input clock to be in range 4-5MHz
+#pragma config FPLLMUL = MUL_24 // multiply clock after FPLLIDIV
+#pragma config FPLLODIV = DIV_2 // divide clock after FPLLMUL to get 48MHz
+#pragma config UPLLIDIV = DIV_2 // divider for the 8MHz input clock, then multiply by 12 to get 48MHz for USB
+#pragma config UPLLEN = ON // USB clock on
 
-void i2c_master_send(unsigned char byte) { // send a byte to slave
-  I2C1TRN = byte;                   // if an address, bit 0 = 0 for write, 1 for read
-  while(I2C1STATbits.TRSTAT) { ; }  // wait for the transmission to finish
-  if(I2C1STATbits.ACKSTAT) {        // if this is high, slave has not acknowledged
-    // ("I2C2 Master: failed to receive ACK\r\n");
-  }
-}
+// DEVCFG3
+#pragma config USERID = 0 // some 16bit userid, doesn't matter what
+#pragma config PMDL1WAY = OFF // allow multiple reconfigurations
+#pragma config IOL1WAY = OFF // allow multiple reconfigurations
+#pragma config FUSBIDIO = ON // USB pins controlled by USB module
+#pragma config FVBUSONIO = ON // USB BUSON controlled by USB module
 
-unsigned char i2c_master_recv(void) { // receive a byte from the slave
-    I2C1CONbits.RCEN = 1;             // start receiving data
-    while(!I2C1STATbits.RBF) { ; }    // wait to receive the data
-    return I2C1RCV;                   // read and return the data
-}
+int main(void) {
+    __builtin_disable_interrupts();
 
-void i2c_master_ack(int val) {        // sends ACK = 0 (slave should send another byte)
-                                      // or NACK = 1 (no more bytes requested from slave)
-    I2C1CONbits.ACKDT = val;          // store ACK/NACK in ACKDT
-    I2C1CONbits.ACKEN = 1;            // send ACKDT
-    while(I2C1CONbits.ACKEN) { ; }    // wait for ACK/NACK to be sent
-}
+    // set the CP0 CONFIG register to indicate that kseg0 is cacheable (0x3)
+    __builtin_mtc0(_CP0_CONFIG, _CP0_CONFIG_SELECT, 0xa4210583);
 
-void i2c_master_stop(void) {          // send a STOP:
-  I2C1CONbits.PEN = 1;                // comm is complete and master relinquishes bus
-  while(I2C1CONbits.PEN) { ; }        // wait for STOP to complete
+    // 0 data RAM access wait states
+    BMXCONbits.BMXWSDRM = 0x0;
+
+    // enable multi vector interrupts
+    INTCONbits.MVEC = 0x1;
+
+    // disable JTAG to get pins back
+    DDPCONbits.JTAGEN = 0;
+
+    // do your TRIS and LAT commands here
+    TRISBbits.TRISB4 = 1; //sets RB4 (pin 11, Push Button) as input
+    TRISAbits.TRISA4 = 0; //sets RA4 (pin 12, Green LED) as output
+    LATAbits.LATA4 = 1; //sets Green LED to be high output 
+    ANSELBbits.ANSB2 = 0; //turn off analog on pin 6 of pic32
+    __builtin_enable_interrupts();
+    
+    i2c_master_setup(); //turns on I2C peripheral
+    
+    while(1) {
+        ;
+    }
+    return 0;
 }
