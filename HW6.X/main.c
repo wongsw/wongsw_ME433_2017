@@ -60,6 +60,14 @@ void display_char(unsigned char x, unsigned char y, unsigned short color1, char 
     }
 }
 
+void display_string(char* msg1, unsigned char x, unsigned char y) {
+    int i = 0;
+    while(msg1[i]!=0){
+        display_char(x+(i*8+1), y, TEXTCOLOR, msg1[i]);
+        i++;
+    }
+}
+    
 int main() {
 
     __builtin_disable_interrupts();
@@ -85,6 +93,9 @@ int main() {
     LCD_clearScreen(BG);
     
     __builtin_enable_interrupts();
-
-    display_char(10, 100, TEXTCOLOR, 'H');
+    char msg[20];
+    sprintf(msg, "HELLO");
+    display_string(msg,10,10);
+    
+    
 }
