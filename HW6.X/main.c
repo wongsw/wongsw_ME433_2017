@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #define BG 0xF800 //Background color = RED
+#define TEXTCOLOR 0xFFFF //Text color = WHITE
 
 // DEVCFG0
 #pragma config DEBUG = OFF // no debugging
@@ -40,6 +41,24 @@
 #pragma config FUSBIDIO = ON // USB pins controlled by USB module
 #pragma config FVBUSONIO = ON // USB BUSON controlled by USB module
 
+void display_char(unsigned char x, unsigned char y, unsigned short color1, char c) {
+    int i = 0, j = 0;
+
+    for (i=0; i<5; i++) { // i is the index of columns
+        unsigned short k = ASCII[c-0x20][i]; // k is a byte in the ASCII table
+        for (j=0; j<8; j++) { // j is the index of rows
+            if(x > 128 || y > 128){ // error check that x and y are not out of bounds
+                break;
+            }
+            if(k >> j & 1) {
+                LCD_drawPixel(x+i, y+j, color1);
+            }
+            else {   
+                LCD_drawPixel(x+i, y+j, BG);
+            }
+        }
+    }
+}
 
 int main() {
 
@@ -67,7 +86,5 @@ int main() {
     
     __builtin_enable_interrupts();
 
-    while(1) {
-        ;
-    }
+    display_char(10, 100, TEXTCOLOR, 'H');
 }
