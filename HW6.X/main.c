@@ -132,7 +132,7 @@ int main() {
             sprintf(msg1, "FPS = %.2f", fps);
             display_string(msg1,28,75); // displays msg1 at (28,75)
         
-            while(_CP0_GET_COUNT() <= 480000){
+            while(_CP0_GET_COUNT() <= 4800000){
                 ; //do nothing for 0.2s to achieve 0-100 in 20s
             }
             
