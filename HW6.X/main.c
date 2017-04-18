@@ -64,12 +64,12 @@ void display_char(unsigned char x, unsigned char y, unsigned short color1, char 
 void display_string(char* msg1, unsigned char x, unsigned char y) {
     int i = 0;
     while(msg1[i]!=0){
-        display_char(x+(i*8+1), y, TEXTCOLOR, msg1[i]);
+        display_char(x+(i*6), y, TEXTCOLOR, msg1[i]); // Displace the spacing between letters
         i++;
     }
 }
 
-void draw_bar(unsigned char x, unsigned char y, unsigned char w, unsigned short color1, unsigned char maxLength) {
+void draw_bar(unsigned char x, unsigned char y, unsigned char w, unsigned short color1, unsigned short color2, unsigned char len, unsigned char maxLength) {
     int i = 0, j = 0;
     for(j=0; j<maxLength; j++){
         if(x>128||y >128){ // error checking 
@@ -109,11 +109,23 @@ int main() {
     LCD_clearScreen(BG);
     
     __builtin_enable_interrupts();
-    char msg[20];
-    sprintf(msg, "HELLO");
-    display_string(msg,28,32);
+    char msg[20], msg1[20];
+    int count = 0, t_ops = 0;
+    float fps = 0.0;
+    for(count=0; count<100; count++){
+        _CP0_SET_COUNT(0);
+        sprintf(msg, "Hello World %d", count);
+        display_string(msg,28,32);
     
-    draw_bar(28,50,10,BARCOLOR,30);
+        draw_bar(28,50,10,BARCOLOR,count,100);
+        t_ops = _CP0_GET_COUNT(); // time taken to do operations above
+        fps = 1/(t_ops/24000000); // frequency of update 
+        sprintf(msg1, "FPS = %.2f", fps);
+        display_string(msg1,28,75);
+        while(_CP0_GET_COUNT() <= 480000){
+			; //do nothing for 0.2s
+		}
+    }
     
     
 }
