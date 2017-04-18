@@ -67,7 +67,10 @@ void display_string(char* msg1, unsigned char x, unsigned char y) {
         i++;
     }
 }
-    
+
+void draw_bar(unsigned char x, unsigned char y, unsigned char w, unsigned short color1, unsigned char len, unsigned char maxLength) {
+    LCD_drawPixel(unsigned short x, unsigned short y, unsigned short color)
+}
 int main() {
 
     __builtin_disable_interrupts();
