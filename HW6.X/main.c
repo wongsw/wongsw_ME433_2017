@@ -5,6 +5,7 @@
 
 #define BG 0xF800 //Background color = RED
 #define TEXTCOLOR 0xFFFF //Text color = WHITE
+#define BARCOLOR 0xFFFF //Bar color = WHITE
 
 // DEVCFG0
 #pragma config DEBUG = OFF // no debugging
@@ -68,9 +69,21 @@ void display_string(char* msg1, unsigned char x, unsigned char y) {
     }
 }
 
-void draw_bar(unsigned char x, unsigned char y, unsigned char w, unsigned short color1, unsigned char len, unsigned char maxLength) {
-    LCD_drawPixel(unsigned short x, unsigned short y, unsigned short color)
+void draw_bar(unsigned char x, unsigned char y, unsigned char w, unsigned short color1, unsigned char maxLength) {
+    int i = 0, j = 0;
+    for(j=0; j<maxLength; j++){
+        if(x>128||y >128){ // error checking 
+            break;
+        }
+        for(i=0; i<w; i++){
+            unsigned char len = y;
+            LCD_drawPixel(x, len, color1);
+            len++;
+        }
+        x++;
+    }
 }
+
 int main() {
 
     __builtin_disable_interrupts();
@@ -99,6 +112,7 @@ int main() {
     char msg[20];
     sprintf(msg, "HELLO");
     display_string(msg,10,10);
+    draw_bar(50,50,20,BARCOLOR,10);
     
     
 }
