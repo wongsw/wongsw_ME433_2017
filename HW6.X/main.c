@@ -75,8 +75,8 @@ void draw_bar(unsigned char x, unsigned char y, unsigned char w, unsigned short 
         if(x>128||y >128){ // error checking 
             break;
         }
+        unsigned short len = y;
         for(i=0; i<w; i++){
-            unsigned char len = y;
             LCD_drawPixel(x, len, color1);
             len++;
         }
@@ -111,8 +111,9 @@ int main() {
     __builtin_enable_interrupts();
     char msg[20];
     sprintf(msg, "HELLO");
-    display_string(msg,10,10);
-    draw_bar(50,50,20,BARCOLOR,10);
+    display_string(msg,28,32);
+    
+    draw_bar(28,50,10,BARCOLOR,30);
     
     
 }
