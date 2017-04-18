@@ -123,10 +123,10 @@ int main() {
     while(1){
         for(count=0; count<100; count++){
             _CP0_SET_COUNT(0); // start core timer to count fps later
-            sprintf(msg, "Hello World %d", count);
+            sprintf(msg, "Hello World %d ", count);
             display_string(msg,28,32); // displays msg at (28,32)
-    
-            draw_bar(28,50,10,BARCOLOR,BG,count,100); // draws bar at every length
+                
+            draw_bar(28,50,1,BARCOLOR,BG,count,100); // draws bar at every length
             fps = 24000000/_CP0_GET_COUNT(); // frequency taken to do operations above (1/time of operations)
             
             sprintf(msg1, "FPS = %.2f", fps);
