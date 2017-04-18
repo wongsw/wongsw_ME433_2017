@@ -71,14 +71,22 @@ void display_string(char* msg1, unsigned char x, unsigned char y) {
 
 void draw_bar(unsigned char x, unsigned char y, unsigned char w, unsigned short color1, unsigned short color2, unsigned char len, unsigned char maxLength) {
     int i = 0, j = 0;
-    for(j=0; j<maxLength; j++){
+    for(j=0; j<len; j++){
         if(x>128||y >128){ // error checking 
             break;
         }
-        unsigned short len = y;
         for(i=0; i<w; i++){
-            LCD_drawPixel(x, len, color1);
-            len++;
+            LCD_drawPixel(x, y+i, color1);
+        }
+        x++;
+    }
+    
+    for(j=len; j<maxLength; j++){
+        if(x>128||y >128){ // error checking 
+            break;
+        }
+        for(i=0; i<w; i++){
+            LCD_drawPixel(x, y+i, color2);
         }
         x++;
     }
@@ -112,19 +120,23 @@ int main() {
     char msg[20], msg1[20];
     int count = 0, t_ops = 0;
     float fps = 0.0;
-    for(count=0; count<100; count++){
-        _CP0_SET_COUNT(0);
-        sprintf(msg, "Hello World %d", count);
-        display_string(msg,28,32);
+    while(1){
+        for(count=0; count<100; count++){
+            _CP0_SET_COUNT(0);
+            sprintf(msg, "Hello World %d", count);
+            display_string(msg,28,32);
     
-        draw_bar(28,50,10,BARCOLOR,count,100);
-        t_ops = _CP0_GET_COUNT(); // time taken to do operations above
-        fps = 1/(t_ops/24000000); // frequency of update 
-        sprintf(msg1, "FPS = %.2f", fps);
-        display_string(msg1,28,75);
-        while(_CP0_GET_COUNT() <= 480000){
-			; //do nothing for 0.2s
-		}
+            draw_bar(28,50,10,BARCOLOR,BG,count,100);
+           /* t_ops = _CP0_GET_COUNT(); // time taken to do operations above
+            fps = 1/(t_ops/24000000); // frequency of update 
+            sprintf(msg1, "FPS = %.2f", fps);
+            display_string(msg1,28,75);
+        
+            while(_CP0_GET_COUNT() <= 480000){
+                ; //do nothing for 0.2s
+            }
+            */
+        }
     }
     
     
