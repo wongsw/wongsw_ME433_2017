@@ -71,7 +71,7 @@ void display_string(char* msg1, unsigned char x, unsigned char y) {
 
 void draw_bar(unsigned char x, unsigned char y, unsigned char w, unsigned short color1, unsigned short color2, unsigned char len, unsigned char maxLength) {
     int i = 0, j = 0;
-    for(j=0; j<len; j++){
+    for(j=0; j<len; j++){ //filled bar progress
         if(x>128||y >128){ // error checking 
             break;
         }
@@ -81,12 +81,12 @@ void draw_bar(unsigned char x, unsigned char y, unsigned char w, unsigned short 
         x++;
     }
     
-    for(j=len; j<maxLength; j++){
+    for(j=len; j<maxLength; j++){ //unfilled bar progress
         if(x>128||y >128){ // error checking 
             break;
         }
         for(i=0; i<w; i++){
-            LCD_drawPixel(x, y+i, color2);
+            LCD_drawPixel(x, y+i, color2); //draws with alt color
         }
         x++;
     }
@@ -118,24 +118,24 @@ int main() {
     
     __builtin_enable_interrupts();
     char msg[20], msg1[20];
-    int count = 0, t_ops = 0;
+    int count = 0;
     float fps = 0.0;
     while(1){
         for(count=0; count<100; count++){
-            _CP0_SET_COUNT(0);
+            _CP0_SET_COUNT(0); // start core timer to count fps later
             sprintf(msg, "Hello World %d", count);
-            display_string(msg,28,32);
+            display_string(msg,28,32); // displays msg at (28,32)
     
-            draw_bar(28,50,10,BARCOLOR,BG,count,100);
-           /* t_ops = _CP0_GET_COUNT(); // time taken to do operations above
-            fps = 1/(t_ops/24000000); // frequency of update 
+            draw_bar(28,50,10,BARCOLOR,BG,count,100); // draws bar at every length
+            fps = 24000000/_CP0_GET_COUNT(); // frequency taken to do operations above (1/time of operations)
+            
             sprintf(msg1, "FPS = %.2f", fps);
-            display_string(msg1,28,75);
+            display_string(msg1,28,75); // displays msg1 at (28,75)
         
             while(_CP0_GET_COUNT() <= 480000){
-                ; //do nothing for 0.2s
+                ; //do nothing for 0.2s to achieve 0-100 in 20s
             }
-            */
+            
         }
     }
     
