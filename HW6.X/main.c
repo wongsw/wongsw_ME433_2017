@@ -118,8 +118,9 @@ int main() {
     
     __builtin_enable_interrupts();
     char msg[20], msg1[20];
-    int count = 0;
+    int count = 0, tps = 0;
     float fps = 0.0;
+    
     while(1){
         for(count=0; count<100; count++){
             _CP0_SET_COUNT(0); // start core timer to count fps later
@@ -127,7 +128,7 @@ int main() {
             display_string(msg,28,32); // displays msg at (28,32)
                 
             draw_bar(28,50,1,BARCOLOR,BG,count,100); // draws bar at every length
-            fps = 24000000/_CP0_GET_COUNT(); // frequency taken to do operations above (1/time of operations)
+            fps = 24000000.00/_CP0_GET_COUNT(); // frequency taken to do operations above (1/time of operations)
             
             sprintf(msg1, "FPS = %.2f", fps);
             display_string(msg1,28,75); // displays msg1 at (28,75)
