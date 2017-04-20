@@ -50,31 +50,7 @@
 #pragma config FUSBIDIO = ON // USB pins controlled by USB module
 #pragma config FVBUSONIO = ON // USB BUSON controlled by USB module
 
-/*
-//reading value from GPIO pins
-char getExpander(void){ 
-    i2c_master_start(); // make the start bit
-    i2c_master_send(SLAVE_ADDR<<1|0); // device opcode, left shift by 1, set last bit as '0' for writing
-    i2c_master_send(0x09); // GPIO register 
-    i2c_master_restart(); // make restart bit
-    i2c_master_send(SLAVE_ADDR<<1|1); // device opcode, left shift by 1, set last bit as '0' for reading
-    unsigned char r = i2c_master_recv(); //save value returned
-    i2c_master_ack(1); // make ACK so slave knows we received it
-    i2c_master_stop(); //make the stop bit
-    return r;
-}
-
-//setting pin value
-void setExpander(char pin, char level){
-    unsigned char manipulate_bits = (0x01 & level) << pin; // manipulate the correct level for the pin
-    
-    i2c_master_start(); // make the start bit
-    i2c_master_send(SLAVE_ADDR<<1|0); // device opcode, left shift by 1, set last bit as '0' for writing
-    i2c_master_send(0x09); // GPIO register 
-    i2c_master_send(manipulate_bits); // config pin to level
-    i2c_master_stop(); //make the stop bit
-}
- */
+// No error checking for situations when bar is out of bounds
 
 void display_char(unsigned char x, unsigned char y, unsigned short color1, char c) {
     int i = 0, j = 0;
