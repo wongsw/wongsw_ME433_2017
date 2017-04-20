@@ -7,8 +7,9 @@
 #define SLAVE_ADDR 0b1101011 // based on LSM6DS33 datasheet, SDO not connected (GND)
 #define WHO_AM_I_ADDR 0b00001111 // based on Table 16 of LSM6DS33 datasheet, WHO_AM_I register address
 #define CTRL1_XL_ADDR 0b00010000 // CTRL1_XL register address
-#define CTRL2_G_ADDR 0b00010001 // CTRL2_G_ADDR register address
-#define CTRL3_C_ADDR 0b00010010 // CTRL3_C_ADDR register address
+#define CTRL2_G_ADDR 0b00010001 // CTRL2_G register address
+#define CTRL3_C_ADDR 0b00010010 // CTRL3_C register address
+#define OUT_TEMP_L_ADDR 0b00100000 // OUT_TEMP_L register address
 #define BG 0xF800 //Background color = RED
 #define TEXTCOLOR 0xFFFF //Text color = WHITE
 
@@ -137,17 +138,18 @@ void IMU_init(){
     i2c_master_stop(); //SP: stop bit
 }
 
-void I2C_read_multiple(unsigned char address, unsigned char register, unsigned char * data, int length) {
+void I2C_read_multiple(unsigned char address, unsigned char register1, unsigned char * data, int length) {
     i2c_master_start(); //ST: start bit
     i2c_master_send(address<<1|0); //SAD+W: slave address left shifted 1 and add a '0' bit for writing
-    i2c_master_send(register); //SUB: send an 8-bit sub-address of register used
+    i2c_master_send(register1); //SUB: send an 8-bit sub-address of register used
     i2c_master_restart(); // SR: make restart bit
     i2c_master_send(address<<1|1); // SAD+R: slave address left shifted 1 and add a '1' bit for reading
     int i = 0;
-    for(i=0; i<length; i++) {
-        data[i] = i2c_master_recv(); //DATA: save 14 8 bit bytes 
+    for(i=0; i<length-1; i++) {
+        data[i] = i2c_master_recv(); //DATA: save 13 8-bit bytes 
         i2c_master_ack(0); // MAK
     }
+    data[length-1] = i2c_master_recv(); //DATA: save the 14th 8-bit bytes
     i2c_master_ack(1); // NMAK
     i2c_master_stop(); //SP: stop bit
 }
@@ -180,15 +182,41 @@ int main(void) {
     LCD_clearScreen(BG);
     __builtin_enable_interrupts();
 
-    char msg[20];
-    unsigned char dataArray[100];
+    char msg[100];
+    unsigned char charArray[100]; // to store 8 bit bytes
+    signed short shortArray[100]; // to store 16 bit shorts after recombination from charArray
+   
+    
     while(1) {
-        dataArray[]
-        sprintf(msg, "WHO_AM_I value %d ", getWHOAMI());
-        display_string(msg,10,32); // displays msg at (28,32)
+        //sprintf(msg, "Temp: %d", getWHOAMI());
+        //display_string(msg,10,20);
         
+        I2C_read_multiple(SLAVE_ADDR, OUT_TEMP_L_ADDR, charArray, 14); //reads 14 8-bit bytes of data, into the charArray
+        int j = 0;
+        for(j=0; j<7; j++){ //recombines charArray data into 7 16-bit shorts
+            shortArray[j] = ((charArray[2*j+1] << 8) | (charArray[2*j])); 
+        }
         
-    }   
-    return 0;
+        sprintf(msg, "Temp: %hi", shortArray[0]);
+        display_string(msg,10,20); 
+        sprintf(msg, "gyroX: %hi", shortArray[1]);
+        display_string(msg,10,30); 
+        sprintf(msg, "gyroY: %hi", shortArray[2]);
+        display_string(msg,10,40); 
+        sprintf(msg, "gyroZ: %hi", shortArray[3]);
+        display_string(msg,10,50);
+        sprintf(msg, "accelX: %hi", shortArray[4]);
+        display_string(msg,10,60);
+        sprintf(msg, "accelY: %hi", shortArray[5]);
+        display_string(msg,10,70);
+        sprintf(msg, "accelZ: %hi", shortArray[6]);
+        display_string(msg,10,80); 
+        
+        while(_CP0_GET_COUNT() <= 4800000){
+            ; //do nothing for 0.2s to achieve 5Hz
+        }
+         
+    }
+
 }
 
