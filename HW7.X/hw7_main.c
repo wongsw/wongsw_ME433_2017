@@ -6,6 +6,9 @@
 
 #define SLAVE_ADDR 0b1101011 // based on LSM6DS33 datasheet, SDO not connected (GND)
 #define WHO_AM_I_ADDR 0b00001111 // based on Table 16 of LSM6DS33 datasheet, WHO_AM_I register address
+#define CTRL1_XL_ADDR 0b00010000 // CTRL1_XL register address
+#define CTRL2_G_ADDR 0b00010001 // CTRL2_G_ADDR register address
+#define CTRL3_C_ADDR 0b00010010 // CTRL3_C_ADDR register address
 #define BG 0xF800 //Background color = RED
 #define TEXTCOLOR 0xFFFF //Text color = WHITE
 
@@ -45,22 +48,6 @@
 #pragma config FVBUSONIO = ON // USB BUSON controlled by USB module
 
 /*
-//initialize Expander
-void init_IMU(){
-    i2c_master_start(); // make the start bit
-    i2c_master_send(SLAVE_ADDR<<1|0); // device opcode, left shift by 1, set last bit as '0' for writing
-    i2c_master_send(0x00); // IODIR register 
-    i2c_master_send(0b11110000); // config GP7-GP4 as input pins, GP3-GP0 as output pins
-    i2c_master_stop(); //make the stop bit
-    
-    i2c_master_start(); // make the start bit
-    i2c_master_send(SLAVE_ADDR<<1|0); // device opcode, left shift by 1, set last bit as '0' for writing
-    i2c_master_send(0x06); // GPPU register 
-    i2c_master_send(0b11110000); // set input pins to be default high
-    i2c_master_stop(); //make the stop bit
-    
-}
-
 //reading value from GPIO pins
 char getExpander(void){ 
     i2c_master_start(); // make the start bit
@@ -113,6 +100,7 @@ void display_string(char* msg1, unsigned char x, unsigned char y) {
     }
 }
 
+//function to check value of WHO_AM_I register, to ensure connections are correct
 char getWHOAMI(void){
     i2c_master_start(); //ST: start bit
     i2c_master_send(SLAVE_ADDR<<1|0); //SAD+W: slave address left shifted 1 and add a '0' bit for writing
@@ -120,9 +108,48 @@ char getWHOAMI(void){
     i2c_master_restart(); // SR: make restart bit
     i2c_master_send(SLAVE_ADDR<<1|1); // SAD+R: slave address left shifted 1 and add a '1' bit for reading
     unsigned char r = i2c_master_recv(); //save value returned
-    //i2c_master_ack(1); // make ACK so slave knows we received it
+    i2c_master_ack(1); // NMAK
     i2c_master_stop(); //SP: stop bit
     return r;
+}
+
+//initialize IMU
+void IMU_init(){
+    // Turn on accelerometer (Register CTRL1_XL)
+    i2c_master_start(); //ST: start bit
+    i2c_master_send(SLAVE_ADDR<<1|0); //SAD+W: slave address left shifted 1 and add a '0' bit for writing
+    i2c_master_send(CTRL1_XL_ADDR); //SUB: send an 8-bit sub-address of CTRL1_XL_ADDR register used
+    i2c_master_send(0b10000010); // DATA: send 8-bit data to set sample rate to 1.66 kHz, with 2g sensitivity, and 100 Hz filter
+    i2c_master_stop(); //SP: stop bit
+    
+    // Turn on gyroscope (Register CTRL2_G)
+    i2c_master_start(); //ST: start bit
+    i2c_master_send(SLAVE_ADDR<<1|0); //SAD+W: slave address left shifted 1 and add a '0' bit for writing
+    i2c_master_send(CTRL2_G_ADDR); //SUB: send an 8-bit sub-address of CTRL2_G_ADDR register used
+    i2c_master_send(0b10001000); // DATA: send 8-bit data to set sample rate to 1.66 kHz, 1000 dps
+    i2c_master_stop(); //SP: stop bit
+    
+    // Change Register CTRL3_C 
+    i2c_master_start(); //ST: start bit
+    i2c_master_send(SLAVE_ADDR<<1|0); //SAD+W: slave address left shifted 1 and add a '0' bit for writing
+    i2c_master_send(CTRL3_C_ADDR); //SUB: send an 8-bit sub-address of CTRL3_C_ADDR register used
+    i2c_master_send(0b00000100); // DATA: send 8-bit data to set everything default, ensuring IF_INC bit is '1'
+    i2c_master_stop(); //SP: stop bit
+}
+
+void I2C_read_multiple(unsigned char address, unsigned char register, unsigned char * data, int length) {
+    i2c_master_start(); //ST: start bit
+    i2c_master_send(address<<1|0); //SAD+W: slave address left shifted 1 and add a '0' bit for writing
+    i2c_master_send(register); //SUB: send an 8-bit sub-address of register used
+    i2c_master_restart(); // SR: make restart bit
+    i2c_master_send(address<<1|1); // SAD+R: slave address left shifted 1 and add a '1' bit for reading
+    int i = 0;
+    for(i=0; i<length; i++) {
+        data[i] = i2c_master_recv(); //DATA: save 14 8 bit bytes 
+        i2c_master_ack(0); // MAK
+    }
+    i2c_master_ack(1); // NMAK
+    i2c_master_stop(); //SP: stop bit
 }
 int main(void) {
     __builtin_disable_interrupts();
@@ -147,13 +174,16 @@ int main(void) {
     ANSELBbits.ANSB3 = 0; //turn off analog function on pin 7 of pic32
     
     i2c_master_setup(); //turns on I2C peripheral
+    IMU_init(); //initialize IMU
     SPI1_init(); //initialize SPI1
     LCD_init(); //initialize LCD
     LCD_clearScreen(BG);
     __builtin_enable_interrupts();
 
     char msg[20];
+    unsigned char dataArray[100];
     while(1) {
+        dataArray[]
         sprintf(msg, "WHO_AM_I value %d ", getWHOAMI());
         display_string(msg,10,32); // displays msg at (28,32)
         
