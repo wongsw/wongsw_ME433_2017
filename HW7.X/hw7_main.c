@@ -1,8 +1,13 @@
 #include<xc.h>           // processor SFR definitions
 #include<sys/attribs.h>  // __ISR macro
 #include "i2c_master_noint.h"
+#include <stdio.h>
+#include "ILI9163C.h"
 
-#define SLAVE_ADDR 0b0100111 // 4 bits of manufacture-set (0100), 3 bits of A2/A1/A0
+#define SLAVE_ADDR 0b1101011 // based on LSM6DS33 datasheet, SDO not connected (GND)
+#define WHO_AM_I_ADDR 0b00001111 // based on Table 16 of LSM6DS33 datasheet, WHO_AM_I register address
+#define BG 0xF800 //Background color = RED
+#define TEXTCOLOR 0xFFFF //Text color = WHITE
 
 // DEVCFG0
 #pragma config DEBUG = OFF // no debugging
@@ -39,8 +44,9 @@
 #pragma config FUSBIDIO = ON // USB pins controlled by USB module
 #pragma config FVBUSONIO = ON // USB BUSON controlled by USB module
 
+/*
 //initialize Expander
-void init_Expander(){
+void init_IMU(){
     i2c_master_start(); // make the start bit
     i2c_master_send(SLAVE_ADDR<<1|0); // device opcode, left shift by 1, set last bit as '0' for writing
     i2c_master_send(0x00); // IODIR register 
@@ -78,8 +84,46 @@ void setExpander(char pin, char level){
     i2c_master_send(manipulate_bits); // config pin to level
     i2c_master_stop(); //make the stop bit
 }
+*/
 
+void display_char(unsigned char x, unsigned char y, unsigned short color1, char c) {
+    int i = 0, j = 0;
 
+    for (i=0; i<5; i++) { // i is the index of columns
+        unsigned short k = ASCII[c-0x20][i]; // k is a byte in the ASCII table
+        for (j=0; j<8; j++) { // j is the index of rows
+            if(x > 128 || y > 128){ // error check that x and y are not out of bounds
+                break;
+            }
+            if(k >> j & 1) {
+                LCD_drawPixel(x+i, y+j, color1);
+            }
+            else {   
+                LCD_drawPixel(x+i, y+j, BG);
+            }
+        }
+    }
+}
+
+void display_string(char* msg1, unsigned char x, unsigned char y) {
+    int i = 0;
+    while(msg1[i]!=0){
+        display_char(x+(i*6), y, TEXTCOLOR, msg1[i]); // Displace the spacing between letters
+        i++;
+    }
+}
+
+char getWHOAMI(void){
+    i2c_master_start(); //ST: start bit
+    i2c_master_send(SLAVE_ADDR<<1|0); //SAD+W: slave address left shifted 1 and add a '0' bit for writing
+    i2c_master_send(WHO_AM_I_ADDR); //SUB: send an 8-bit sub-address of the WHO_AM_I register used
+    i2c_master_restart(); // SR: make restart bit
+    i2c_master_send(SLAVE_ADDR<<1|1); // SAD+R: slave address left shifted 1 and add a '1' bit for reading
+    unsigned char r = i2c_master_recv(); //save value returned
+    //i2c_master_ack(1); // make ACK so slave knows we received it
+    i2c_master_stop(); //SP: stop bit
+    return r;
+}
 int main(void) {
     __builtin_disable_interrupts();
 
@@ -103,19 +147,17 @@ int main(void) {
     ANSELBbits.ANSB3 = 0; //turn off analog function on pin 7 of pic32
     
     i2c_master_setup(); //turns on I2C peripheral
-    
-    
+    SPI1_init(); //initialize SPI1
+    LCD_init(); //initialize LCD
+    LCD_clearScreen(BG);
     __builtin_enable_interrupts();
-  
+
+    char msg[20];
     while(1) {
-        unsigned char bp = getExpander();
-        bp = bp >> 7;
-        if(bp == 0){ //button pressed
-            setExpander(0,1); // set GP0 to high output (1)
-        }
-        else{
-            setExpander(0,0);
-        }
+        sprintf(msg, "WHO_AM_I value %d ", getWHOAMI());
+        display_string(msg,10,32); // displays msg at (28,32)
+        
+        
     }   
     return 0;
 }
