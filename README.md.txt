@@ -10,3 +10,6 @@ MPLAB XC32 Compiler v1.42, destination: F:\Program Files (x86)\Microchip\xc32\v1
 MPLAB Harmony Integrated Software Framework v1.10, destination: F:\microchip\harmony\v1_10
 Android Studio, destination: F:\Program Files\Android\Android Studio
 Android SDK, destination: F:\Android\sdk
+
+Might be useful:
+Putty: F:\NU_Northwestern University\Winter 17 Archive\333 Mechatronics\NU32
