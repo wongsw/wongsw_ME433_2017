@@ -41,12 +41,25 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
  *******************************************************************************/
 // DOM-IGNORE-END
 
+
+// *****************************************************************************
+// *****************************************************************************
+// Section: Included Files 
+// *****************************************************************************
+// *****************************************************************************
+
 #include "app.h"
 #include <stdio.h>
 #include <xc.h>
 #include <sys/attribs.h>  // __ISR macro
 #include "i2c_master_noint.h"
 #include "ILI9163C.h"
+
+// *****************************************************************************
+// *****************************************************************************
+// Section: Global Data Definitions
+// *****************************************************************************
+// *****************************************************************************
 
 #define SLAVE_ADDR 0b1101011 // based on LSM6DS33 datasheet, SDO not connected (GND)
 #define WHO_AM_I_ADDR 0b00001111 // based on Table 16 of LSM6DS33 datasheet, WHO_AM_I register address
@@ -59,21 +72,15 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 #define BARCOLOR 0xFFFF //Bar color = WHITE
 #define MAXBARLEN 50 //Maximum length for drawing bars
 
-// *****************************************************************************
-// *****************************************************************************
-// Section: Global Data Definitions
-// *****************************************************************************
-// *****************************************************************************
-
 uint8_t APP_MAKE_BUFFER_DMA_READY dataOut[APP_READ_BUFFER_SIZE];
 uint8_t APP_MAKE_BUFFER_DMA_READY readBuffer[APP_READ_BUFFER_SIZE];
 int len, i = 0;
+int k = 0;
 int startTime = 0;
-
+int go = 0;
 char msg[100];
 unsigned char charArray[100]; // to store 8 bit bytes
 signed short shortArray[100]; // to store 16 bit shorts after recombination from charArray
-
 // *****************************************************************************
 /* Application Data
   Summary:
@@ -87,6 +94,15 @@ signed short shortArray[100]; // to store 16 bit shorts after recombination from
  */
 
 APP_DATA appData;
+
+// *****************************************************************************
+// *****************************************************************************
+// Section: Application Callback Functions
+// *****************************************************************************
+// *****************************************************************************
+
+/* TODO:  Add any necessary callback functions.
+ */
 
 //initialize IMU
 void IMU_init() {
@@ -112,7 +128,6 @@ void IMU_init() {
     i2c_master_stop(); //SP: stop bit
 }
 
-//bring in multiple values
 void I2C_read_multiple(unsigned char address, unsigned char register1, unsigned char * data, int length) {
     i2c_master_start(); //ST: start bit
     i2c_master_send(address << 1 | 0); //SAD+W: slave address left shifted 1 and add a '0' bit for writing
@@ -128,6 +143,7 @@ void I2C_read_multiple(unsigned char address, unsigned char register1, unsigned 
     i2c_master_ack(1); // NMAK
     i2c_master_stop(); //SP: stop bit
 }
+
 /*******************************************************
  * USB CDC Device Events - Application Event Handler
  *******************************************************/
@@ -341,14 +357,13 @@ bool APP_StateReset(void) {
 void APP_Initialize(void) {
     /* Place the App state machine in its initial state. */
     appData.state = APP_STATE_INIT;
-
-     /* Initialize pins and I2C/IMU. */
+    
+    /* Initialize pins and IMU/I2C */
     TRISBbits.TRISB4 = 1; //sets RB4 (pin 11, Push Button) as input
     TRISAbits.TRISA4 = 0; //sets RA4 (pin 12, Green LED) as output
     LATAbits.LATA4 = 1; //sets Green LED to be high output 
     ANSELBbits.ANSB2 = 0; //turn off analog function on pin 6 of pic32
     ANSELBbits.ANSB3 = 0; //turn off analog function on pin 7 of pic32
-    
     i2c_master_setup(); //turns on I2C peripheral
     IMU_init(); //initialize IMU
     
@@ -425,12 +440,11 @@ void APP_Tasks(void) {
             break;
 
         case APP_STATE_SCHEDULE_READ:
-        // From Computer to PIC
 
             if (APP_StateReset()) {
                 break;
             }
-  
+
             /* If a read is complete, then schedule a read
              * else wait for the current read to complete */
 
@@ -453,24 +467,23 @@ void APP_Tasks(void) {
 
         case APP_STATE_WAIT_FOR_READ_COMPLETE:
         case APP_STATE_CHECK_TIMER:
-            
+
             if (APP_StateReset()) {
                 break;
             }
 
             /* Check if a character was received or a switch was pressed.
              * The isReadComplete flag gets updated in the CDC event handler. */
-            //if (appData.readBuffer == 'r') { //if 'r' is read from computer
-                if (appData.isReadComplete || _CP0_GET_COUNT() - startTime > (48000000 / 2 / 100)) { // '100' can be used to change frequency. Current freq is 100Hz.
-                    appData.state = APP_STATE_SCHEDULE_WRITE;
-                }
-            
+
+            if (appData.isReadComplete || _CP0_GET_COUNT() - startTime > (48000000 / 2 / 100)) { // Change the frequency here. Currently set at 100 Hz
+                appData.state = APP_STATE_SCHEDULE_WRITE;
+            }
 
             break;
 
 
         case APP_STATE_SCHEDULE_WRITE:
-        // From PIC to Computer
+
             if (APP_StateReset()) {
                 break;
             }
@@ -481,29 +494,50 @@ void APP_Tasks(void) {
             appData.isWriteComplete = false;
             appData.state = APP_STATE_WAIT_FOR_WRITE_COMPLETE;
             
-            /* Code for collecting values from IMU */
-            I2C_read_multiple(SLAVE_ADDR, OUT_TEMP_L_ADDR, charArray, 14); //reads 14 8-bit bytes of data, into the charArray
-            int j = 0;
-            for (j = 0; j < 7; j++) { //recombines charArray data into 7 16-bit shorts
-                shortArray[j] = ((charArray[2 * j + 1] << 8) | (charArray[2 * j]));
-            }
-            /* Printing the values on Putty screen*/
-
-            len = sprintf(dataOut, "%d %d %d %d %d %d %d\r\n", i, shortArray[1], shortArray[2], shortArray[3], shortArray[4], shortArray[5], shortArray[6]);
-            i++;
-        
+            dataOut[0] = 0;
 
             if (appData.isReadComplete) {
-                USB_DEVICE_CDC_Write(USB_DEVICE_CDC_INDEX_0,
-                        &appData.writeTransferHandle,
-                        appData.readBuffer, 1,
-                        USB_DEVICE_CDC_TRANSFER_FLAGS_DATA_COMPLETE);
+                if (appData.readBuffer[0] == 'r') {
+                    go = 1;
+                    USB_DEVICE_CDC_Write(USB_DEVICE_CDC_INDEX_0, // send required blank packet when read is not complete (i.e. dataOut[0] = 0, len = 1)
+                            &appData.writeTransferHandle, dataOut, 1,
+                            USB_DEVICE_CDC_TRANSFER_FLAGS_DATA_COMPLETE);
+                } else {
+                    len = sprintf(dataOut, "error\r\n");
+                    USB_DEVICE_CDC_Write(USB_DEVICE_CDC_INDEX_0,
+                            &appData.writeTransferHandle,
+                            dataOut, len,
+                            USB_DEVICE_CDC_TRANSFER_FLAGS_DATA_COMPLETE);
+                }
             } else {
-                USB_DEVICE_CDC_Write(USB_DEVICE_CDC_INDEX_0,
-                        &appData.writeTransferHandle, dataOut, len,
-                        USB_DEVICE_CDC_TRANSFER_FLAGS_DATA_COMPLETE);
-                startTime = _CP0_GET_COUNT();
+                if (go == 1) {
+                    if (i < 100) { //to print 100 values
+                        I2C_read_multiple(SLAVE_ADDR, OUT_TEMP_L_ADDR, charArray, 14); //reads 14 8-bit bytes of data, into the charArray
+                        int j = 0;
+                        for (j = 0; j < 7; j++) { //recombines charArray data into 7 16-bit shorts
+                            shortArray[j] = ((charArray[2 * j + 1] << 8) | (charArray[2 * j]));
+                        }
+                        len = sprintf(dataOut, "%d %d %d %d %d %d %d\r\n", i, shortArray[1], shortArray[2], shortArray[3], shortArray[4], shortArray[5], shortArray[6]);
+                        i++;
+                        USB_DEVICE_CDC_Write(USB_DEVICE_CDC_INDEX_0,
+                                &appData.writeTransferHandle,
+                                dataOut, len,
+                                USB_DEVICE_CDC_TRANSFER_FLAGS_DATA_COMPLETE);
+                    } else { //reset it back to 0 once there are 100 values
+                        i = 0;
+                        go = 0;
+                        USB_DEVICE_CDC_Write(USB_DEVICE_CDC_INDEX_0, // send required blank packet when read is not complete (i.e. dataOut[0] = 0, len = 1)
+                                &appData.writeTransferHandle, dataOut, 1,
+                                USB_DEVICE_CDC_TRANSFER_FLAGS_DATA_COMPLETE);
+                    }
+                } else { //print required blank packet when nothing is in buffer
+                    USB_DEVICE_CDC_Write(USB_DEVICE_CDC_INDEX_0,
+                            &appData.writeTransferHandle, dataOut, 1,
+                            USB_DEVICE_CDC_TRANSFER_FLAGS_DATA_COMPLETE);
+                    startTime = _CP0_GET_COUNT();
+                }
             }
+
             break;
 
         case APP_STATE_WAIT_FOR_WRITE_COMPLETE:
@@ -525,10 +559,9 @@ void APP_Tasks(void) {
             break;
         default:
             break;
-            
-        
     }
 }
+
 
 
 

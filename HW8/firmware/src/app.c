@@ -226,6 +226,8 @@ void I2C_read_multiple(unsigned char address, unsigned char register1, unsigned 
     i2c_master_ack(1); // NMAK
     i2c_master_stop(); //SP: stop bit
 }
+
+
 /* TODO:  Add any necessary callback functions.
 */
 
