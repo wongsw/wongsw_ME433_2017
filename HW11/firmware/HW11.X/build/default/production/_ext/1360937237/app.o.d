@@ -227,4 +227,6 @@ build/default/production/_ext/1360937237/app.o:  \
  ../../../../../microchip/harmony/v1_10/framework/usb/usb_device.h  \
  ../../../../../microchip/harmony/v1_10/framework/usb/usb_hid.h  \
  ../src/app.h  \
-../src/mouse.h 
+../src/mouse.h  \
+../src/i2c_master_noint.h  \
+../src/ILI9163C.h 

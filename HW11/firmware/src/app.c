@@ -49,11 +49,28 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 // *****************************************************************************
 
 #include "app.h"
-
+#include <stdio.h>
+#include <xc.h>
+#include <sys/attribs.h>  // __ISR macro
+#include "i2c_master_noint.h"
+#include "ILI9163C.h"
 
 // *****************************************************************************
 // *****************************************************************************
 // Section: Global Data Definitions
+#define SLAVE_ADDR 0b1101011 // based on LSM6DS33 datasheet, SDO not connected (GND)
+#define WHO_AM_I_ADDR 0b00001111 // based on Table 16 of LSM6DS33 datasheet, WHO_AM_I register address
+#define CTRL1_XL_ADDR 0b00010000 // CTRL1_XL register address
+#define CTRL2_G_ADDR 0b00010001 // CTRL2_G register address
+#define CTRL3_C_ADDR 0b00010010 // CTRL3_C register address
+#define OUT_TEMP_L_ADDR 0b00100000 // OUT_TEMP_L register address
+#define BG 0xF800 //Background color = RED
+#define TEXTCOLOR 0xFFFF //Text color = WHITE
+#define BARCOLOR 0xFFFF //Bar color = WHITE
+#define MAXBARLEN 50 //Maximum length for drawing bars
+#define MAX_MAF 5 
+#define a 0.3
+#define b 0.7
 // *****************************************************************************
 // *****************************************************************************
 
@@ -79,6 +96,47 @@ MOUSE_REPORT mouseReportPrevious APP_MAKE_BUFFER_DMA_READY;
 // *****************************************************************************
 // *****************************************************************************
 // Section: Application Callback Functions
+/* TODO:  Add any necessary callback functions.
+ */
+//initialize IMU
+void IMU_init() {
+    // Turn on accelerometer (Register CTRL1_XL)
+    i2c_master_start(); //ST: start bit
+    i2c_master_send(SLAVE_ADDR << 1 | 0); //SAD+W: slave address left shifted 1 and add a '0' bit for writing
+    i2c_master_send(CTRL1_XL_ADDR); //SUB: send an 8-bit sub-address of CTRL1_XL_ADDR register used
+    i2c_master_send(0b10000010); // DATA: send 8-bit data to set sample rate to 1.66 kHz, with 2g sensitivity, and 100 Hz filter
+    i2c_master_stop(); //SP: stop bit
+
+    // Turn on gyroscope (Register CTRL2_G)
+    i2c_master_start(); //ST: start bit
+    i2c_master_send(SLAVE_ADDR << 1 | 0); //SAD+W: slave address left shifted 1 and add a '0' bit for writing
+    i2c_master_send(CTRL2_G_ADDR); //SUB: send an 8-bit sub-address of CTRL2_G_ADDR register used
+    i2c_master_send(0b10001000); // DATA: send 8-bit data to set sample rate to 1.66 kHz, 1000 dps
+    i2c_master_stop(); //SP: stop bit
+
+    // Change Register CTRL3_C 
+    i2c_master_start(); //ST: start bit
+    i2c_master_send(SLAVE_ADDR << 1 | 0); //SAD+W: slave address left shifted 1 and add a '0' bit for writing
+    i2c_master_send(CTRL3_C_ADDR); //SUB: send an 8-bit sub-address of CTRL3_C_ADDR register used
+    i2c_master_send(0b00000100); // DATA: send 8-bit data to set everything default, ensuring IF_INC bit is '1'
+    i2c_master_stop(); //SP: stop bit
+}
+
+void I2C_read_multiple(unsigned char address, unsigned char register1, unsigned char * data, int length) {
+    i2c_master_start(); //ST: start bit
+    i2c_master_send(address << 1 | 0); //SAD+W: slave address left shifted 1 and add a '0' bit for writing
+    i2c_master_send(register1); //SUB: send an 8-bit sub-address of register used
+    i2c_master_restart(); // SR: make restart bit
+    i2c_master_send(address << 1 | 1); // SAD+R: slave address left shifted 1 and add a '1' bit for reading
+    int i = 0;
+    for (i = 0; i < length - 1; i++) {
+        data[i] = i2c_master_recv(); //DATA: save 13 8-bit bytes 
+        i2c_master_ack(0); // MAK
+    }
+    data[length - 1] = i2c_master_recv(); //DATA: save the 14th 8-bit bytes
+    i2c_master_ack(1); // NMAK
+    i2c_master_stop(); //SP: stop bit
+}
 // *****************************************************************************
 // *****************************************************************************
 
@@ -240,6 +298,7 @@ void APP_USBDeviceEventHandler(USB_DEVICE_EVENT event, void * eventData, uintptr
 // *****************************************************************************
 // *****************************************************************************
 
+
 /*******************************************************************************
   Function:
     void APP_Initialize ( void )
@@ -255,6 +314,15 @@ void APP_Initialize(void) {
     //appData.emulateMouse = true;
     appData.hidInstance = 0;
     appData.isMouseReportSendBusy = false;
+    
+    /* Initialize pins and IMU/I2C */
+    TRISBbits.TRISB4 = 1; //sets RB4 (pin 11, Push Button) as input
+    TRISAbits.TRISA4 = 0; //sets RA4 (pin 12, Green LED) as output
+    LATAbits.LATA4 = 1; //sets Green LED to be high output 
+    ANSELBbits.ANSB2 = 0; //turn off analog function on pin 6 of pic32
+    ANSELBbits.ANSB3 = 0; //turn off analog function on pin 7 of pic32
+    i2c_master_setup(); //turns on I2C peripheral
+    IMU_init(); //initialize IMU
 }
 
 /******************************************************************************
@@ -269,7 +337,10 @@ void APP_Tasks(void) {
     //static uint8_t movement_length = 0;
     //int8_t dir_table[] = {-4, -4, -4, 0, 4, 4, 4, 0};
     static uint8_t inc = 0;
-    
+    unsigned char charArray[100]; // to store 8 bit bytes
+    signed short shortArray[100]; // to store 16 bit shorts after recombination from charArray
+    int x_scaled = 0, y_scaled = 0;
+    int j = 0;
     /* Check the application's current state. */
     switch (appData.state) {
             /* Application's initial state. */
@@ -303,17 +374,30 @@ void APP_Tasks(void) {
             }
             break;
 
-        case APP_STATE_MOUSE_EMULATE:
-            
-            // every 50th loop, or 20 times per second
-            //if (movement_length > 50) {
+        case APP_STATE_MOUSE_EMULATE: //Gets input from IMU and moves mouse
+            I2C_read_multiple(SLAVE_ADDR, OUT_TEMP_L_ADDR, charArray, 14); //reads 14 8-bit bytes of data, into the charArray
+            for (j = 0; j < 7; j++) { //recombines charArray data into 7 16-bit shorts
+                shortArray[j] = ((charArray[2 * j + 1] << 8) | (charArray[2 * j]));
+            }
+            x_scaled = shortArray[4]/1000; //x-axis accelerometer value
+            y_scaled = shortArray[5]/1000; //y-axis accelerometer value
+            /* adds a delay for movement of mouse */
+            if (inc == 10) { // every 10th loop 
                 appData.mouseButton[0] = MOUSE_BUTTON_STATE_RELEASED;
                 appData.mouseButton[1] = MOUSE_BUTTON_STATE_RELEASED;
-                appData.xCoordinate = (int8_t) 2;
-                appData.yCoordinate = (int8_t) 2;
+                appData.xCoordinate = (int8_t) x_scaled;
+                appData.yCoordinate = (int8_t) y_scaled;
                 //vector++;
                 //movement_length = 0;
-            //}
+                inc = 0; // reset the counter
+            }
+            else { 
+                appData.mouseButton[0] = MOUSE_BUTTON_STATE_RELEASED;
+                appData.mouseButton[1] = MOUSE_BUTTON_STATE_RELEASED;
+                appData.xCoordinate = (int8_t) 0;
+                appData.yCoordinate = (int8_t) 0;
+                inc++;
+            }
 
             if (!appData.isMouseReportSendBusy) {
                 /* This means we can send the mouse report. The
