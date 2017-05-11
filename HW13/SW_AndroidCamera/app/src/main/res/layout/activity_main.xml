@@ -17,11 +17,34 @@
         tools:layout_editor_absoluteY="8dp"
         tools:layout_editor_absoluteX="8dp">
 
+        //TextView for Title
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Camera app to identify Green color"
+            android:id="@+id/title"/>
+        //TextView to print bar progress
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Progress bar initial value"
+            android:id="@+id/barStatus"/>
+        //Creates seek bar
+        <SeekBar
+            android:id="@+id/seek1"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            android:progress="20"
+            android:secondaryProgress="20"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            />
         //TextView to print the frames per second
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Nothing yet"
+            android:text="FPS initial value"
             android:id="@+id/cameraStatus"/>
         //SurfaceView to see where your app thinks the line is
         <SurfaceView
