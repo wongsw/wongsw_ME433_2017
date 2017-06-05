@@ -40,11 +40,11 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
     private Paint paint1 = new Paint();
     private TextView fpsTextview;
     SeekBar RbarControl, TbarControl;
-    TextView myTitle, RbarText, TbarText;
+    TextView myTitle;
 
     static long prevtime = 0; // for FPS calculation
-    int Rvalue = 0;
-    int Tvalue = 0;
+    int Rvalue = 0; //The difference between Green and Red pixel values (to find color Grey)
+    int Tvalue = 0; //How dark/light you want grey to be
 
 
 
@@ -58,8 +58,8 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
         fpsTextview = (TextView) findViewById(R.id.fpsStatus);
         RbarControl = (SeekBar) findViewById(R.id.seek1);
         TbarControl = (SeekBar) findViewById(R.id.seek2);
-        RbarText = (TextView) findViewById(R.id.bar1Status);
-        TbarText = (TextView) findViewById(R.id.bar2Status);
+        //RbarText = (TextView) findViewById(R.id.bar1Status);
+        //TbarText = (TextView) findViewById(R.id.bar2Status);
         setMyControlListener(); // calls function to update progress bar
 
         // see if the app has permission to use the camera
@@ -82,54 +82,6 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
 
     }
 
-    // the important function
-    public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-        // every time there is a new Camera preview frame
-        mTextureView.getBitmap(bmp);
-
-        final Canvas c = mSurfaceHolder.lockCanvas();
-        if (c != null) {
-
-            int[] pixels = new int[bmp.getWidth()]; // pixels[] is the RGBA data
-            for (int j = 0; j < bmp.getHeight(); j+=10){ // to read each row of the frame
-                int startY = j; // which row in the bitmap to analyze to read
-                bmp.getPixels(pixels, 0, bmp.getWidth(), 0, startY, bmp.getWidth(), 1);
-
-                // in the row, see if there is more green than red
-                int COM = 0; // center of masses
-                int sum_mr = 0; // the sum of the mass times the radius
-                int sum_m = 0; // the sum of the masses
-                for (int i = 0; i < bmp.getWidth(); i++) {
-                    if (((green(pixels[i]) - red(pixels[i])) > -Rvalue) && ((green(pixels[i]) - red(pixels[i])) < Rvalue) && (green(pixels[i]) > Tvalue)) {
-                        pixels[i] = rgb(1, 1, 1); // set the pixel to almost 100% black
-
-                        sum_m = sum_m + green(pixels[i]) + red(pixels[i]) + blue(pixels[i]);
-                        sum_mr = sum_mr + (green(pixels[i]) + red(pixels[i]) + blue(pixels[i])) * i;
-                    }
-                }
-                // only use the data if there were a few pixels identified, otherwise you might get a divide by 0 error
-                if (sum_m > 5) {
-                    COM = sum_mr / sum_m;
-                } else {
-                    COM = 0;
-                }
-                // update the row
-                bmp.setPixels(pixels, 0, bmp.getWidth(), 0, startY, bmp.getWidth(), 1);
-                // draw a circle at some position
-                canvas.drawCircle(COM, startY, 5, paint1); // x position, y position, diameter, color
-            }
-        }
-
-        c.drawBitmap(bmp, 0, 0, null);
-        mSurfaceHolder.unlockCanvasAndPost(c);
-
-        // calculate the FPS to see how fast the code is running
-        long nowtime = System.currentTimeMillis();
-        long diff = nowtime - prevtime;
-        fpsTextview.setText("FPS " + 1000 / diff);
-        prevtime = nowtime;
-    }
-
     private void setMyControlListener() {
         RbarControl.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
             int progressChanged = 0;
@@ -137,7 +89,7 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 progressChanged = 0;
-                RbarText.setText("R value is: "+progress);
+                //RbarText.setText("R value is: "+progress);
                 Rvalue = progress;
             }
 
@@ -156,7 +108,7 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 progressChanged = progress;
-                TbarText.setText("T value is: "+progress);
+               //TbarText.setText("T value is: "+progress);
                 Tvalue = progress;
             }
 
@@ -202,6 +154,50 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
     }
 
     // the important function
+    public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+        // every time there is a new Camera preview frame
+        mTextureView.getBitmap(bmp);
 
+        final Canvas c = mSurfaceHolder.lockCanvas();
+        if (c != null) {
 
+            int[] pixels = new int[bmp.getWidth()]; // pixels[] is the RGBA data
+            for (int j = 0; j < bmp.getHeight(); j+=10){ // to read each row of the frame
+                int startY = j; // which row in the bitmap to analyze to read
+                bmp.getPixels(pixels, 0, bmp.getWidth(), 0, startY, bmp.getWidth(), 1);
+
+                int COM = 0; // center of masses (where software thinks middle of line is)
+                int sum_mr = 0; // the sum of the mass times the radius
+                int sum_m = 0; // the sum of the masses
+                for (int i = 0; i < bmp.getWidth(); i++) {
+                    if (((green(pixels[i]) - red(pixels[i])) > -Rvalue) && ((green(pixels[i]) - red(pixels[i])) < Rvalue) && (green(pixels[i]) > Tvalue)) {
+                        pixels[i] = rgb(1, 1, 1); // set the pixel to almost 100% black
+                        sum_m = sum_m + green(pixels[i]) + red(pixels[i]) + blue(pixels[i]);
+                        sum_mr = sum_mr + (green(pixels[i]) + red(pixels[i]) + blue(pixels[i])) * i;
+                    }
+                }
+                // only use the data if there were a few pixels identified, otherwise you might get a divide by 0 error
+                if (sum_m > 5) {
+                    COM = sum_mr / sum_m;
+                } else {
+                    COM = 0;
+                }
+                // update the row
+                bmp.setPixels(pixels, 0, bmp.getWidth(), 0, startY, bmp.getWidth(), 1);
+                // draw a circle where COM is
+                canvas.drawCircle(COM, startY, 3, paint1); // x position, y position, diameter, color
+                // write the pos as text
+                canvas.drawText("R = " + Rvalue, 10, 30, paint1);
+                canvas.drawText("T = " + Tvalue, 10, 60, paint1);
+            }
+        }
+        c.drawBitmap(bmp, 0, 0, null);
+        mSurfaceHolder.unlockCanvasAndPost(c);
+
+        // calculate the FPS to see how fast the code is running
+        long nowtime = System.currentTimeMillis();
+        long diff = nowtime - prevtime;
+        fpsTextview.setText("FPS " + 1000 / diff);
+        prevtime = nowtime;
+    }
 }
