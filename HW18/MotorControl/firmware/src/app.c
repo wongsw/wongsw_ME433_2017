@@ -399,10 +399,23 @@ void APP_Tasks(void) {
         case APP_STATE_SCHEDULE_READ:
             // somewhere in APP_Tasks(), probably in case APP_STATE_SCHEDULE_READ
                 // when you read data from the host
-                LATAbits.LATA1 = 1; // direction
-                OC1RS = 600; // velocity, 50%
-                LATBbits.LATB3 = 0; // direction
-                OC4RS = 600; // velocity, 50%
+            if(rxVal == 50) { // no movement
+                LATAbits.LATA1 = 0; 
+                OC1RS = 0; 
+                LATBbits.LATB3 = 0; 
+                OC4RS = 0; 
+            } else if(rxVal == 0) {
+                LATAbits.LATA1 = 0; 
+                OC1RS = 600 ; 
+                LATBbits.LATB3 = 0; 
+                OC4RS = 600; 
+            } else if (rxVal == 100) {
+                LATAbits.LATA1 = 1; 
+                OC1RS = 600; 
+                LATBbits.LATB3 = 1; 
+                OC4RS = 600; 
+            }
+            
             if (APP_StateReset()) {
                 break;
             }
@@ -472,7 +485,8 @@ void APP_Tasks(void) {
             appData.writeTransferHandle = USB_DEVICE_CDC_TRANSFER_HANDLE_INVALID;
             appData.isWriteComplete = false;
             appData.state = APP_STATE_WAIT_FOR_WRITE_COMPLETE;
-
+            
+            dataOut[0] = 0;
             if (gotRx) {
                 len = sprintf(dataOut, "got: %d\r\n", rxVal);
                 i++;
@@ -482,13 +496,13 @@ void APP_Tasks(void) {
                         USB_DEVICE_CDC_TRANSFER_FLAGS_DATA_COMPLETE);
                 rxPos = 0;
                 gotRx = 0;
+
             } else {
-                len = sprintf(dataOut, "%d\r\n", i);
-                i++;
+                
                 USB_DEVICE_CDC_Write(USB_DEVICE_CDC_INDEX_0,
-                        &appData.writeTransferHandle, dataOut, len,
-                        USB_DEVICE_CDC_TRANSFER_FLAGS_DATA_COMPLETE);
-                startTime = _CP0_GET_COUNT();
+                            &appData.writeTransferHandle, dataOut, 1,
+                            USB_DEVICE_CDC_TRANSFER_FLAGS_DATA_COMPLETE);
+                    startTime = _CP0_GET_COUNT();
             }
             break;
 
@@ -500,7 +514,7 @@ void APP_Tasks(void) {
 
             /* Check if a character was sent. The isWriteComplete
              * flag gets updated in the CDC event handler */
-
+                
             if (appData.isWriteComplete == true) {
                 appData.state = APP_STATE_SCHEDULE_READ;
             }
