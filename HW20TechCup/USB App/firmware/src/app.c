@@ -57,7 +57,7 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 // Section: Global Data Definitions
 // *****************************************************************************
 // *****************************************************************************
-#define MAX_DUTY 449 //Max speed is 1199
+#define MAX_DUTY 519 //Max speed is 1199
 uint8_t APP_MAKE_BUFFER_DMA_READY dataOut[APP_READ_BUFFER_SIZE];
 uint8_t APP_MAKE_BUFFER_DMA_READY readBuffer[APP_READ_BUFFER_SIZE];
 int len, i = 0;
@@ -68,7 +68,7 @@ int gotRx = 0; // the flag
 int rxVal = 0; // a place to store the int that was received
 int error = 0;
 int left = 0, right = 0;
-float kp = 1.3;
+float kp = 1.2;
 
 // *****************************************************************************
 /* Application Data

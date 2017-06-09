@@ -79,8 +79,8 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
     TextView myTitle;
 
     static long prevtime = 0; // for FPS calculation
-    int Rvalue = 29; //The difference between Green and Red pixel values (to find color Grey)
-    int Tvalue = 79; //How dark/light you want grey to be
+    int Rvalue = 40; //The difference between Green and Red pixel values (to find color Grey)
+    int Tvalue = 58; //How dark/light you want grey to be
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -175,8 +175,8 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
         parameters.setPreviewSize(640, 480);
         parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_INFINITY); // no autofocusing
         parameters.setAutoExposureLock(true); // keep the white balance constant
-        //parameters.setWhiteBalance(FOCUS_MODE_AUTO);
-        //parameters.setExposureCompensation();
+        parameters.setWhiteBalance(Camera.Parameters.WHITE_BALANCE_FLUORESCENT);
+        parameters.setExposureCompensation(5);
         mCamera.setParameters(parameters);
         mCamera.setDisplayOrientation(90); // rotate to portrait mode
 
@@ -216,7 +216,7 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
                 int sum_mr = 0; // the sum of the mass times the radius
                 int sum_m = 0; // the sum of the masses
                 for (int i = 0; i < bmp.getWidth(); i++) {
-                    if (((green(pixels[i]) - red(pixels[i])) > -Rvalue) && ((green(pixels[i]) - red(pixels[i])) < Rvalue) && (green(pixels[i]) > Tvalue)) {
+                    if (((green(pixels[i]) - red(pixels[i])) > -Rvalue) && ((green(pixels[i]) - red(pixels[i])) < Rvalue) && ((green(pixels[i]) - blue(pixels[i])) > -Rvalue) && ((green(pixels[i]) - blue(pixels[i])) < Rvalue) && (green(pixels[i]) > Tvalue)) {
                         pixels[i] = rgb(1, 1, 1); // set the pixel to almost 100% black
                         sum_m = sum_m + green(pixels[i]) + red(pixels[i]) + blue(pixels[i]);
                         sum_mr = sum_mr + (green(pixels[i]) + red(pixels[i]) + blue(pixels[i])) * i;
