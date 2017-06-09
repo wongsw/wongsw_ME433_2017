@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.example.songwei.techcup_sw.MainActivity">
+
+    <ScrollView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:orientation="vertical"
+        android:visibility="visible">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tech Cup app"
+            android:id="@+id/title"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FPS"
+            android:id="@+id/fpsStatus"/>
+
+        //SurfaceView is augmented output
+        <SurfaceView
+            android:id="@+id/surfaceview"
+            android:layout_width="640px"
+            android:layout_height="480px" />
+
+        <SeekBar
+            android:id="@+id/seek1"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="5dp"
+            android:progress="29"
+            android:secondaryProgress="20"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp" />
+
+        <SeekBar
+            android:id="@+id/seek2"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="5dp"
+            android:paddingBottom="5dp"
+            android:paddingTop="5dp"
+            android:progress="79"
+            android:secondaryProgress="20" />
+
+        <Button
+            android:id="@+id/button1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Send slider value" />
+        <TextView
+            android:id="@+id/textView02"
+            android:text="nothing from button yet"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            />
+        <ScrollView
+            android:id="@+id/ScrollView01"
+            android:layout_width="wrap_content"
+            android:layout_height="50dip">
+            <TextView
+                android:id="@+id/textView03"
+                android:text="nothing from usb yet"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@android:color/holo_green_light"
+                />
+        </ScrollView>
+        //TextureView is camera input
+        <TextureView
+            android:id="@+id/textureview"
+            android:layout_width="640px"
+            android:layout_height="480px" />
+
+    </LinearLayout>
+    </ScrollView>
+
+</android.support.constraint.ConstraintLayout>
